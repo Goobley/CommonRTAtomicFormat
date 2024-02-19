@@ -20,7 +20,7 @@ This specification is inspired and based on work by Tiago Pereira in [Muspel](ht
 Notes
 -----
 
-* When discussing atomic transitions the integer indicies i and j are used with j > i.
+* When discussing atomic transitions the integer indices i and j are used with j > i.
 
 Spec
 ----
@@ -138,7 +138,7 @@ The simplified format of each atomic level table is the same as the high-level f
 Spectral Lines
 --------------
 
-The file will provide a top-level `radiative_bound_bound` sequence. This array will contain the specification of each spectral line in the model as a mapping.
+The file will provide a top-level `lines` sequence. This array will contain the specification of each spectral line in the model as a mapping.
 
 ### High-level format
 
@@ -153,7 +153,7 @@ The mapping for each bound-bound transition must contain:
 Example:
 
 ```yaml
-radiative_bound_bound:
+lines:
 - type: PRD-Voigt
   transition: [second, first]
   f_value: 0.1
@@ -187,7 +187,7 @@ This is convention in the high-level case, but guaranteed for a simplified model
 
 Example:
 ```yaml
-radiative_bound_bound:
+lines:
 - type: PRD-Voigt
   transition: [second, first]
   f_value: 0.1
@@ -276,7 +276,7 @@ The simplified format is the same as the high-level format, with the additional 
 Continua
 --------
 
-The file will provide a top-level `radiative_bound_free` sequence. This sequence will contain the specification of each atomic continuum as a mapping.
+The file will provide a top-level `continua` sequence. This sequence will contain the specification of each atomic continuum as a mapping.
 
 ### High-level format
 
@@ -303,7 +303,7 @@ Depending on the value of `type` additional keys will be present:
 Collisional Rates
 -----------------
 
-The file will provide a top-level `collisional_rates` sequence.
+The file will provide a top-level `collisions` sequence.
 This sequence will contain the specification of the processes between each pair of levels of interest as a mapping.
 
 ### High-level format
