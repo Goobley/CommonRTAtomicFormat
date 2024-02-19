@@ -326,9 +326,15 @@ The core types in CRTAF are:
 |"ChargeExcH" | Charge exchange with neutral H (downward only) | "m3 s-1" |
 |"ChargeExcP" | Charge exchange with protons (upward only) | "m3 s-1" |
 
+All of these core types are rates which conventionally scale with temperature, so each process mapping will also contain:
+
+* a mapping `temperature` containing a `unit` (string) and `value` (sequence of floats)
+* a mapping `data` containing a `unit` (string) and `value` (sequence of floats) describing the rates.
+
 ### Low-level format
 
-All processes are provided with their default units.
+* All processes are provided with their default units.
+* Interpolation of cross-sections is implementation defined.
 
 Extensions
 ----------
