@@ -1,4 +1,4 @@
-CRTAF v0.1.0
+CRTAF v0.2.0
 ============
 
 Common Radiative Transfer Atomic Format.
@@ -44,7 +44,7 @@ Example:
 
 ```yaml
 crtaf_meta:
-  version: "v0.1.0"
+  version: "v0.2.0"
   level: high-level
   extensions: []
   notes: A test.
@@ -297,7 +297,7 @@ Depending on the value of `type` additional keys will be present:
 
 ### Simplified format
 
-* All in `"nm"` and `"m^2"`.
+* Only `"Tabulated"` continua are supported. All units in `"nm"` and `"m^2"`.
 * Interpolation of cross-sections is implementation defined.
 
 Collisional Rates
