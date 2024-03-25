@@ -66,7 +66,7 @@ This mapping will contain the element `symbol` (string), and the `atomic_mass` (
 The element table may also specify atomic numbers `N` and `Z` as integers, allowing for multiple isotopes of species.
 If `N` is provided the model should be considered as a model of a particular isotope, and not a general case for a species.
 
-The `abundance` of the species may also be specified (in the conventional logarithmic scale used by Asplund et al where $\log \epsilon_H = 12$ and $\log \epsilon_X = \log(N_X / N_H) + 12$ where $N_X$ and $N_H$ are the number densities of a given element X and H respectively).
+The `abundance` of the species may also be specified (in the conventional logarithmic scale where $\log \epsilon_H = 12$ and $\log \epsilon_X = \log(N_X / N_H) + 12$ where $N_X$ and $N_H$ are the number densities of a given element X and H respectively).
 Abundance is provided in an advisory capacity: if a code has a different way of specifying elemental abundance it may overrule the behaviour in the atom file.
 This behaviour must be documented in the particular CRTAF implementation.
 
@@ -81,14 +81,14 @@ element:
 
 ### Simplified format
 
-In the simplified CRTAF format _all_ of the above fields with the exception of `N` are required. If `N` is provided and the code has no facility for processing isotopes, an warning should be emitted.
+In the simplified CRTAF format _all_ of the above fields with the exception of `N` are required. If `N` is provided and the code has no facility for processing isotopes, a warning should be emitted.
 
 Atomic Levels
 -------------
 
 ### High-level format
 
-The file will provide a top-level `levels` mapping.
+The file will provide a top-level `levels` mapping. Each level will be indexed by a name, not by a number.
 This mapping will contain a dynamic number of mappings corresponding to the atomic energy levels present in the model.
 
 The table for each atomic energy level must contain:
@@ -112,14 +112,14 @@ Example:
 
 ```yaml
 levels:
-  first:
+  first_level:
     energy:
       unit: 1 / cm
       value: 123.0
     g: 1
     stage: 1
     label: First Level
-  second:
+  second_level:
     energy:
       unit: 1 / cm
       value: 456.0
@@ -128,9 +128,10 @@ levels:
     label: Second Level
 ```
 
+
 ### Simplified format
 
-The simplified format of each atomic level table is the same as the high-level format with the additional requirements:
+The levels in simplified format are nearly the same as in the high-level format, but the energy is given as either:
 
 * `energy` is in typical spectroscopic units `"1/ cm"`
 * `energy_eV` table is present with units `"eV"` and the `value` of the level energy in eV.
@@ -148,14 +149,14 @@ The mapping for each bound-bound transition must contain:
 * The key `transition` with value an array of two atomic level labels specifying the upper and lower levels of the transition by label.
 * The dimensionless oscillator strength `f_value` (float).
 * A sequence of `broadening` mappings. These contain a `type` (string) and are specified in [Line Broadening](#line-broadening).
-* A sub-mapping describing the `wavelength_grid` containing the wavelength grid `type` (string). The core spec provides support for `"Linear"` and `"Tabulated"`, specified in [Line Wavelength Grids](#line-wavelength-grids). Extensions may override the fields present and parsing of this table.
+* A sub-mapping describing the `wavelength_grid` containing the wavelength grid `type` (string). The core spec provides support for `"Linear"` and `"Table"`, specified in [Line Wavelength Grids](#line-wavelength-grids). Extensions may override the fields present and parsing of this table.
 
 Example:
 
 ```yaml
 lines:
 - type: PRD-Voigt
-  transition: [second, first]
+  transition: [second_level, first_level]
   f_value: 0.1
   broadening:
   - {type: Natural, elastic: false, value: {unit: 1 / s, value: 10000000.0}}
@@ -189,7 +190,7 @@ Example:
 ```yaml
 lines:
 - type: PRD-Voigt
-  transition: [second, first]
+  transition: [second_level, first_level]
   f_value: 0.1
   broadening:
   - {type: Natural, elastic: false, value: {unit: 1 / s, value: 10000000.0}}
@@ -254,13 +255,13 @@ Line Wavelength Grids
 The `wavelength_grid` mapping of a spectral line describes the wavelength quadrature provided as input into the program.
 The code is not required to use this wavelength grid, but it must indicate if it does not.
 
-The core spec requires support for the `"Linear"` and `"Tabulated"` wavelength grid types.
+The core spec requires support for the `"Linear"` and `"Table"` wavelength grid types. 
 These must provide:
 
 * `"Linear"`:
     * `n_lambda` (int): the total number of wavelength points (typically odd).
     * `delta_lambda`: mapping of `value` (float) and `unit` (string) specifying the half-width of the transition from the line rest wavelength.
-* `"Tabulated"`:
+* `"Table"`:
     * `unit` (string): The unit of `wavelengths`
     * `wavelengths`: Sequence of wavelength points to sample at (relative to the line rest wavelength as 0).
 
@@ -270,7 +271,7 @@ The simplified format is the same as the high-level format, with the additional 
 
 * `"Linear"`:
     * `unit`: Must be in `"nm"`
-* `"Tabulated"`:
+* `"Table"`:
     * `unit`: Must be in `"nm"`
 
 Continua
