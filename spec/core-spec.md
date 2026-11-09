@@ -1,4 +1,4 @@
-CRTAF v0.2.0
+CRTAF v0.3.0
 ============
 
 Common Radiative Transfer Atomic Format.
@@ -26,35 +26,60 @@ Spec
 ----
 
 * CRTAF models are stored in a valid [YAML](https://yaml.org) file. This file is used as a more user-friendly variant of JSON, and the format does not make use of advanced YAML features.
-* CRTAF models will contain a `crtaf_meta` mapping specified in [CRTAF Mapping](#crtaf-table).
-* CRTAF models will contain an `extensions` array specified in [Extensions array](#extensions-array).
+* CRTAF models will contain a `crtaf_meta` mapping specified in [CRTAF Mapping](#crtaf-mapping), which contains the `extensions` array specified in [Extensions array](#extensions-array).
+* Mappings must not contain keys other than those specified here (or by an extension listed in the `extensions` array). Readers should reject unknown keys rather than ignore them, so that misspelt optional keys are reported.
+* Wherever a `type` key selects between variants, an unknown `type` is an error.
 * CRTAF models will contain units where possible. The simplified format will use a pre-defined set of units (SI with wavelengths in nm) for every field to simplify parsing.
 
 CRTAF Mapping
 -------------
 
-The CRTAF mapping will be a top-level mapping with key `mapping`.
+The CRTAF mapping will be a top-level mapping with key `crtaf_meta`.
 
-* It must specify the version of the CRTAF spec the model complies to as a string.
+* It must specify the `version` of the CRTAF spec the model complies to as a string of the form `"vMAJOR.MINOR"` or `"vMAJOR.MINOR.PATCH"` (see [Versioning](#versioning)).
 * It must specify the `level` as either `"high-level"` or `"simplified"`
 * It must contain an extension array (potentially empty), as specified in [Extensions Array](#extensions-array).
 * It may contain a multi-line string of `notes` from the model author.
+* It may contain a `provenance` sequence, as specified in [Provenance](#provenance).
 
 Example:
 
 ```yaml
 crtaf_meta:
-  version: "v0.2.0"
+  version: "v0.3.0"
   level: high-level
   extensions: []
   notes: A test.
+  provenance:
+  - action: convert
+    tool: crtaf-py
+    tool_version: 0.3.0
+    params: {from: lightweaver}
 ```
+
+### Versioning
+
+* Patch releases (`vX.Y.Z` → `vX.Y.Z+1`) never change the format.
+* Readers must reject files whose `MAJOR.MINOR` is newer than the newest version they support.
+* Readers may accept older versions by migrating them; the reference implementation migrates every version from v0.1.0 onwards. A migrated model is reported (and written) with the current version.
 
 ### Extensions Array
 
-The `CRTAF` table must contain an array with key `extensions` this array contains the name of zero or more `CRTAF` extensions that are necessary to parse the provided file.
+The `crtaf_meta` mapping must contain an array with key `extensions`; this array contains the name of zero or more `CRTAF` extensions that are necessary to parse the provided file.
 All extension names should be provided as strings.
+Every extension used in the file must be listed; a file using an unlisted extension is invalid.
 The available extensions are detailed in the extensions documentation.
+
+### Provenance
+
+The optional `provenance` sequence records the history of the model (conversion, simplification, editing operations), oldest first.
+Each entry is a mapping containing:
+
+* `action` (string): what was done, e.g. `"convert"`, `"simplify"`, or the name of an editing operation.
+* `tool` (string): the program that did it, e.g. `"crtaf-py"`.
+* optionally `tool_version` (string), `timestamp` (ISO 8601 string), and `params` (mapping of the parameters of the action).
+
+Tools that modify a model should append to this sequence. Readers must not change their interpretation of the model based on its contents.
 
 Core Atomic Data
 ----------------
@@ -94,8 +119,8 @@ This mapping will contain a dynamic number of mappings corresponding to the atom
 The table for each atomic energy level must contain:
 
 * An `energy` mapping containing a `value` for the energy (float), and the `unit` used (string)
-* The statistical weight value `g` (int)
-* The ionisation `stage` (int). This is chosen so the neutral element has stage 1 to correspond to typical astronomy notation (e.g. Ca I for neutral Ca).
+* The statistical weight value `g` (int, >= 1)
+* The ionisation `stage` (int, >= 1). This is chosen so the neutral element has stage 1 to correspond to typical astronomy notation (e.g. Ca I for neutral Ca).
 
 The mapping for each atomic energy level may also contain:
 
@@ -146,6 +171,7 @@ The mapping for each bound-bound transition must contain:
 
 * The transition `type` (string). The core spec provides support for `"Voigt"` and `"PRD-Voigt"`. Extensions may override the fields present and parsing of this mapping.
 * The key `transition` with value an array of two atomic level labels specifying the upper and lower levels of the transition by label.
+  The labels may be given in either order (readers order them by energy). A pair of levels may have more than one line (e.g. weak forbidden components alongside an allowed line); such lines are distinguished by their order in the `lines` sequence.
 * The dimensionless oscillator strength `f_value` (float).
 * A sequence of `broadening` mappings. These contain a `type` (string) and are specified in [Line Broadening](#line-broadening).
 * A sub-mapping describing the `wavelength_grid` containing the wavelength grid `type` (string). The core spec provides support for `"Linear"` and `"Tabulated"`, specified in [Line Wavelength Grids](#line-wavelength-grids). Extensions may override the fields present and parsing of this table.
@@ -233,9 +259,9 @@ The core spec requires support for types:
 
 * `"Natural"`: must provide `value` (float) and (`unit` (string) - typically `"1 / s"`).
 * `"Stark_Linear_Sutton`: only valid for hydrogen. May provide `n_upper` (int), and `n_lower` (int). Otherwise these will be inferred from the atomic model, following the statistical weight of each level $g=2n^2$.
-* `"Stark_Quadratic"`: May provide `scaling` (float), linear scaling coefficient - assumed to be 1.0 if not present.
-* `"Stark_Multiplicative"`: May provide `scaling` (float), linear scaling coefficient - assumed to be 1.0 if not present and `C_4` as a mapping of `value` (float) and `unit` (string) - typically `"m3 / s"`. If `C_4` is not provided, it must be computed following a common approximation (e.g. Traving 1960).
-* `"VdW_Unsold"`: May provide `H_scaling` (float) and `He_scaling` (float) which scale the terms related to hydrogen and helium respectively. These are assumed to be 0.0 if not present.
+* `"Stark_Quadratic"`: May provide `scaling` (float) - assumed to be 1.0 if not present. This scales the quadratic Stark constant C_4 (Traving 1960), as in RH, so the broadening scales as `scaling^(2/3)`.
+* `"Stark_Multiplicative"`: Must provide `C_4` as a mapping of `value` (float) and `unit` (string) - typically `"m3 / s"` - giving the broadening as `scaling * C_4 * n_e`. May provide `scaling` (float), linear scaling coefficient - assumed to be 1.0 if not present.
+* `"VdW_Unsold"`: May provide `H_scaling` (float) and `He_scaling` (float) which scale the terms related to hydrogen and helium respectively. These are assumed to be 1.0 if not present.
 * `"Scaled_Exponents"`: Computes broadening of the form "scaling * T^a * n_H^b * n_e^c" (where T is temperature, n_H is neutral (ground) H density and n_e is electron density). Must provide:
     * `scaling` (float)
     * `temperature_exponent` (float)
@@ -261,17 +287,16 @@ These must provide:
     * `n_lambda` (int): the total number of wavelength points (typically odd).
     * `delta_lambda`: mapping of `value` (float) and `unit` (string) specifying the half-width of the transition from the line rest wavelength.
 * `"Tabulated"`:
-    * `unit` (string): The unit of `wavelengths`
-    * `wavelengths`: Sequence of wavelength points to sample at (relative to the line rest wavelength as 0).
+    * `wavelengths`: mapping of `unit` (string) and `value` (sequence of floats): the wavelength points to sample at (relative to the line rest wavelength as 0).
 
 ### Simplified format
 
 The simplified format is the same as the high-level format, with the additional requirements:
 
 * `"Linear"`:
-    * `unit`: Must be in `"nm"`
+    * `delta_lambda.unit`: Must be `"nm"`
 * `"Tabulated"`:
-    * `unit`: Must be in `"nm"`
+    * `wavelengths.unit`: Must be `"nm"`
 
 Continua
 --------
@@ -284,6 +309,7 @@ The mapping describing each atomic continuum must contain:
 
 * The continuum `type` (string). The core spec provides support for `"Hydrogenic"` and `"Tabulated"`. Extensions may override the fields present and parsing of this mapping.
 * The key `transition` with value a sequence of two atomic level labels specifying the upper and lower levels of the transition by label.
+  The labels may be given in either order (readers order them by energy).
 
 Depending on the value of `type` additional keys will be present:
 * `"Hydrogenic"`: A typical hydrogenic continuum scaling as frequency cubed.
@@ -313,6 +339,8 @@ The mapping describing collisional rates for each transition pair must contain:
 * The key `transition` with value a sequence of two atomic level labels specifying the upper and lower levels of the transition by label.
 * The key `data` with value a sequence of mappings describing the processes relating the two levels.
 
+All the processes for a pair of levels should be grouped in a single entry.
+
 Each mapping in data must contain a field specifying the `type` (string).
 The core types in CRTAF are:
 
@@ -331,7 +359,7 @@ All of these core types are rates which conventionally scale with temperature, s
 * a mapping `temperature` containing a `unit` (string) and `value` (sequence of floats)
 * a mapping `data` containing a `unit` (string) and `value` (sequence of floats) describing the rates.
 
-### Low-level format
+### Simplified format
 
 * All processes are provided with their default units.
 * Interpolation of cross-sections is implementation defined.
